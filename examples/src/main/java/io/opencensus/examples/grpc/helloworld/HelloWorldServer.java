@@ -48,7 +48,7 @@ import java.util.logging.Logger;
 public class HelloWorldServer {
   private static final Logger logger = Logger.getLogger(HelloWorldServer.class.getName());
 
-  private static final Tracer tracer = Tracing.getTracer();
+  //private static final Tracer tracer = Tracing.getTracer();
 
   private final int serverPort;
   private Server server;
@@ -59,6 +59,7 @@ public class HelloWorldServer {
 
   // A helper function that performs some work in its own Span.
   private static void performWork(Span parent) {
+    /*
     SpanBuilder spanBuilder =
         tracer
             .spanBuilderWithExplicitParent("internal_work", parent)
@@ -70,16 +71,18 @@ public class HelloWorldServer {
       span.addAnnotation("Performing work.");
       sleepFor(20); // Working hard here.
       span.addAnnotation("Done work.");
-    }
+    }*/
+    sleepFor(20); // Working hard here.
   }
 
   private static void sleepFor(int milliseconds) {
     try {
       Thread.sleep(milliseconds);
     } catch (InterruptedException e) {
+      /*
       Span span = tracer.getCurrentSpan();
       span.addAnnotation("Exception thrown when performing work " + e.getMessage());
-      span.setStatus(Status.UNKNOWN);
+      span.setStatus(Status.UNKNOWN);*/
     }
   }
 
@@ -125,7 +128,7 @@ public class HelloWorldServer {
     RpcViews.registerAllViews();
 
     // Registers logging trace exporter.
-    LoggingTraceExporter.register();
+    //LoggingTraceExporter.register();
 
     // Starts a HTTP server and registers all Zpages to it.
     ZPageHandlers.startHttpServerAndRegisterAll(zPagePort);
@@ -133,8 +136,10 @@ public class HelloWorldServer {
 
     // Registers Stackdriver exporters.
     if (cloudProjectId != null) {
+      logger.info("Using cloudProjectId:" + cloudProjectId);
+      /*
       StackdriverTraceExporter.createAndRegister(
-          StackdriverTraceConfiguration.builder().setProjectId(cloudProjectId).build());
+          StackdriverTraceConfiguration.builder().setProjectId(cloudProjectId).build());*/
       StackdriverStatsExporter.createAndRegister(
           StackdriverStatsConfiguration.builder()
               .setProjectId(cloudProjectId)
@@ -157,6 +162,7 @@ public class HelloWorldServer {
 
     @Override
     public void sayHello(HelloRequest req, StreamObserver<HelloReply> responseObserver) {
+      /*
       Span span = tracer.getCurrentSpan();
       span.putAttribute("my_attribute", AttributeValue.stringAttributeValue("red"));
       span.addAnnotation(
@@ -164,9 +170,14 @@ public class HelloWorldServer {
           ImmutableMap.of(
               "name", AttributeValue.stringAttributeValue(req.getName()),
               "name length", AttributeValue.longAttributeValue(req.getName().length())));
+              */
       sleepFor(10);
+      performWork(null);
+      /*
       performWork(span);
+
       span.addAnnotation("Sleeping.");
+      */
       sleepFor(30);
       HelloReply reply = HelloReply.newBuilder().setMessage("Hello " + req.getName()).build();
       responseObserver.onNext(reply);

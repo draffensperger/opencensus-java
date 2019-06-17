@@ -23,6 +23,14 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.opencensus.common.Duration;
+import io.opencensus.tags.Tags;
+import io.opencensus.tags.Tagger;
+import io.opencensus.tags.TagContext;
+import io.opencensus.tags.TagContextBuilder;
+import io.opencensus.tags.TagKey;
+import io.opencensus.tags.TagValue;
+
+import io.opencensus.tags.TagsComponent;
 import io.opencensus.common.Scope;
 import io.opencensus.contrib.grpc.metrics.RpcViews;
 import io.opencensus.contrib.zpages.ZPageHandlers;
@@ -50,6 +58,7 @@ public class HelloWorldClient {
 
   private final ManagedChannel channel;
   private final GreeterGrpc.GreeterBlockingStub blockingStub;
+
 
   /** Construct client connecting to HelloWorld server at {@code host:port}. */
   public HelloWorldClient(String host, int port) {
@@ -117,12 +126,14 @@ public class HelloWorldClient {
     logger.info("ZPages server starts at localhost:" + zPagePort);
 
     // Registers logging trace exporter.
-    LoggingTraceExporter.register();
+    //LoggingTraceExporter.register();
 
     // Registers Stackdriver exporters.
     if (cloudProjectId != null) {
+      logger.info("Using cloudProjectId:" + cloudProjectId);
+      /*
       StackdriverTraceExporter.createAndRegister(
-          StackdriverTraceConfiguration.builder().setProjectId(cloudProjectId).build());
+          StackdriverTraceConfiguration.builder().setProjectId(cloudProjectId).build());*/
       StackdriverStatsExporter.createAndRegister(
           StackdriverStatsConfiguration.builder()
               .setProjectId(cloudProjectId)
@@ -133,9 +144,21 @@ public class HelloWorldClient {
     // Register Prometheus exporters and export metrics to a Prometheus HTTPServer.
     PrometheusStatsCollector.createAndRegister();
 
+
+    Tagger tagger = Tags.getTagger();
+    TagKey JOB_ID_KEY = TagKey.create("job_id");
+    TagValue jobIdValue = TagValue.create("2019-06-06-12345657");
+    TagContext tctx = tagger.emptyBuilder().put(JOB_ID_KEY, jobIdValue).build();
+
     HelloWorldClient client = new HelloWorldClient(host, serverPort);
     try {
-      client.greet(user);
+
+
+      try (Scope ss = tagger.withTagContext(tctx)) {
+        for (int i = 0; i < 100; i++) {
+          client.greet(user);
+        }
+      }
     } finally {
       client.shutdown();
     }
