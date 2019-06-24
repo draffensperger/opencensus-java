@@ -19,48 +19,37 @@ package io.opencensus.examples.grpc.helloworld;
 import static io.opencensus.examples.grpc.helloworld.HelloWorldUtils.getPortOrDefaultFromArgs;
 import static io.opencensus.examples.grpc.helloworld.HelloWorldUtils.getStringOrDefaultFromArgs;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import com.google.api.MonitoredResource;
-
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.opencensus.common.Duration;
-import io.opencensus.tags.Tags;
-import io.opencensus.tags.Tagger;
-import io.opencensus.tags.TagContext;
-import io.opencensus.tags.TagContextBuilder;
-import io.opencensus.tags.TagKey;
-import io.opencensus.tags.TagValue;
-import io.opencensus.contrib.grpc.metrics.RpcMeasureConstants;
-import io.opencensus.contrib.grpc.metrics.RpcViews;
-
-import io.opencensus.tags.TagsComponent;
 import io.opencensus.common.Scope;
+import io.opencensus.contrib.grpc.metrics.RpcMeasureConstants;
 import io.opencensus.contrib.grpc.metrics.RpcViews;
 import io.opencensus.contrib.zpages.ZPageHandlers;
 import io.opencensus.exporter.stats.prometheus.PrometheusStatsCollector;
 import io.opencensus.exporter.stats.stackdriver.StackdriverStatsConfiguration;
 import io.opencensus.exporter.stats.stackdriver.StackdriverStatsExporter;
-import io.opencensus.exporter.trace.logging.LoggingTraceExporter;
-import io.opencensus.exporter.trace.stackdriver.StackdriverTraceConfiguration;
-import io.opencensus.exporter.trace.stackdriver.StackdriverTraceExporter;
+import io.opencensus.stats.Aggregation;
+// import io.opencensus.stats.Distribution;
 import io.opencensus.stats.BucketBoundaries;
 import io.opencensus.stats.Stats;
-import io.opencensus.stats.Aggregation;
-//import io.opencensus.stats.Distribution;
 import io.opencensus.stats.View;
-import io.opencensus.stats.ViewManager;
 import io.opencensus.stats.View.Name;
+import io.opencensus.stats.ViewManager;
+import io.opencensus.tags.TagContext;
+import io.opencensus.tags.TagKey;
+import io.opencensus.tags.TagValue;
+import io.opencensus.tags.Tagger;
+import io.opencensus.tags.Tags;
 import io.opencensus.trace.SpanBuilder;
 import io.opencensus.trace.Status.CanonicalCode;
 import io.opencensus.trace.Tracer;
 import io.opencensus.trace.Tracing;
 import io.opencensus.trace.samplers.Samplers;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -73,7 +62,6 @@ public class HelloWorldClient {
 
   private final ManagedChannel channel;
   private final GreeterGrpc.GreeterBlockingStub blockingStub;
-
 
   /** Construct client connecting to HelloWorld server at {@code host:port}. */
   public HelloWorldClient(String host, int port) {
@@ -141,7 +129,7 @@ public class HelloWorldClient {
     logger.info("ZPages server starts at localhost:" + zPagePort);
 
     // Registers logging trace exporter.
-    //LoggingTraceExporter.register();
+    // LoggingTraceExporter.register();
 
     Tagger tagger = Tags.getTagger();
     TagKey JOB_ID_KEY = TagKey.create("job_id");
@@ -158,27 +146,29 @@ public class HelloWorldClient {
     List<Double> boundaries = Arrays.asList(1.0, 10.0, 100.0, 1000.0);
     BucketBoundaries bucketBoundaries = BucketBoundaries.create(boundaries);
 
-    View latencyByJobId = View.create(
-        Name.create("ajamato_roundtrip_latency_by_job_id"),
-         "ajamato client latency by job ID",
-        RpcMeasureConstants.GRPC_CLIENT_ROUNDTRIP_LATENCY,
-        Aggregation.Distribution.create(bucketBoundaries),
-        Arrays.asList(RpcMeasureConstants.RPC_METHOD, JOB_ID_KEY));
+    View latencyByJobId =
+        View.create(
+            Name.create("ajamato_roundtrip_latency_by_job_id"),
+            "ajamato client latency by job ID",
+            RpcMeasureConstants.GRPC_CLIENT_ROUNDTRIP_LATENCY,
+            Aggregation.Distribution.create(bucketBoundaries),
+            Arrays.asList(RpcMeasureConstants.RPC_METHOD, JOB_ID_KEY));
 
-    View finishedCount = View.create(
-
-        Name.create("ajamato_request_count_by_job_id"),
-         "ajamato client request count by job ID",
-        RpcMeasureConstants.GRPC_CLIENT_ROUNDTRIP_LATENCY,
-        Aggregation.Count.create(),
-        Arrays.asList(RpcMeasureConstants.RPC_METHOD, JOB_ID_KEY));
-
+    View finishedCount =
+        View.create(
+            Name.create("daveraff2_request_count_by_job_id"),
+            "daveraff client request count by job ID",
+            RpcMeasureConstants.GRPC_CLIENT_ROUNDTRIP_LATENCY,
+            Aggregation.Count.create(),
+            Arrays.asList(RpcMeasureConstants.RPC_METHOD, JOB_ID_KEY));
 
     ViewManager viewManager = Stats.getViewManager();
     viewManager.registerView(latencyByJobId);
     viewManager.registerView(finishedCount);
 
-    // Registers Stackdriver exporters.
+    logger.info("Hello from Dave 4...");
+    logger.info("Cloud Project ID: " + cloudProjectId);
+
     if (cloudProjectId != null) {
       /*
       MonitoredResource myResource = MonitoredResource.newBuilder()
@@ -193,7 +183,7 @@ public class HelloWorldClient {
           StackdriverTraceConfiguration.builder().setProjectId(cloudProjectId).build());*/
       StackdriverStatsExporter.createAndRegister(
           StackdriverStatsConfiguration.builder()
-              //.setMonitoredResource(myResource)
+              // .setMonitoredResource(myResource)
               .setProjectId(cloudProjectId)
               .setExportInterval(Duration.create(10, 0))
               .build());
@@ -202,15 +192,12 @@ public class HelloWorldClient {
     // Register Prometheus exporters and export metrics to a Prometheus HTTPServer.
     PrometheusStatsCollector.createAndRegister();
 
-
-
-
-
-
     HelloWorldClient client = new HelloWorldClient(host, serverPort);
     try {
       try (Scope ss = tagger.withTagContext(tctx)) {
-        for (int i = 0; i < 100; i++) {
+        logger.info(
+            "Current tag context equals tctx: " + tagger.getCurrentTagContext().equals(tctx));
+        for (int i = 0; i < 10; i++) {
           client.greet(user);
         }
       }
