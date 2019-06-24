@@ -193,25 +193,36 @@ public class HelloWorldClient {
     PrometheusStatsCollector.createAndRegister();
 
     HelloWorldClient client = new HelloWorldClient(host, serverPort);
-    try {
-      try (Scope ss = tagger.withTagContext(tctx)) {
-        logger.info(
-            "Current tag context equals tctx: " + tagger.getCurrentTagContext().equals(tctx));
-        for (int i = 0; i < 10; i++) {
-          client.greet(user);
-        }
-      }
-    } finally {
-      client.shutdown();
-    }
+
+    // try {
+    //   try (Scope ss = tagger.withTagContext(tctx)) {
+    //     logger.info(
+    //         "Current tag context equals tctx: " + tagger.getCurrentTagContext().equals(tctx));
+    //     for (int i = 0; i < 100; i++) {
+    //       client.greet(user);
+    //     }
+    //   }
+    // } finally {
+    //   client.shutdown();
+    // }
 
     logger.info("Client sleeping, ^C to exit. Meanwhile you can view stats and spans on zpages.");
-    while (true) {
-      try {
-        Thread.sleep(10000);
-      } catch (InterruptedException e) {
-        logger.info("Exiting HelloWorldClient...");
+    try {
+      while (true) {
+        try (Scope ss = tagger.withTagContext(tctx)) {
+          logger.info(
+              "Current tag context equals tctx: " + tagger.getCurrentTagContext().equals(tctx));
+          for (int i = 0; i < 10; i++) {
+            client.greet(user);
+          }
+        }
+        Thread.sleep(1000);
       }
+    } catch (InterruptedException e) {
+      logger.info("Exiting HelloWorldClient...");
+    } finally {
+      logger.info("Shutting down client");
+      client.shutdown();
     }
   }
 }
